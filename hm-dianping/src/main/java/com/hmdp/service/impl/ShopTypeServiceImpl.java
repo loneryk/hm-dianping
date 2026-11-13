@@ -14,10 +14,12 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.hmdp.utils.RedisConstants.SHOP_TYPE_KEY;
+
 
 /**
  * <p>
@@ -30,34 +32,52 @@ import static com.hmdp.utils.RedisConstants.SHOP_TYPE_KEY;
 @Slf4j
 @Service
 public class ShopTypeServiceImpl extends ServiceImpl<ShopTypeMapper, ShopType> implements IShopTypeService {
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
-    private final StringRedisTemplate StringRedisTemplate;
+   // @Override
+//    public Result queryTypeList() {
+//        //1.从redis查询商铺类型列表
+//        String shopTypeListJson = (String) StringRedisTemplate.opsForValue().get(SHOP_TYPE_KEY);
+//        //2.判断是否存在
+//        if (StrUtil.isNotBlank(shopTypeListJson)) {
+//            //3.存在，直接返回
+//            List<ShopType> shopTypeList = JSONUtil.toList(shopTypeListJson, ShopType.class);
+//            return Result.ok(shopTypeList);
+//        }
+//        //4.不存在，从数据库查询
+//        List<ShopType> shopTypeList = list();
+//        //判断数据库是否存在
+//        if (shopTypeList == null||shopTypeList.isEmpty()) {
+//             StringRedisTemplate.opsForValue().set(SHOP_TYPE_KEY, "", RedisConstants.CACHE_NULL_TTL, TimeUnit.MINUTES);
+//            return Result.fail("类型不存在");
+//        }
+//
+//        StringRedisTemplate.opsForValue().set(SHOP_TYPE_KEY, JSONUtil.toJsonStr(shopTypeList), RedisConstants.CACHE_SHOP_TTL, TimeUnit.SECONDS);
+//        return Result.ok(shopTypeList);
+//    }
 
 
-    public ShopTypeServiceImpl(RedisTemplate<Object, Object> redisTemplate, StringRedisTemplate stringRedisTemplate, ReactiveStringRedisTemplate reactiveStringRedisTemplate) {
-        this.StringRedisTemplate = stringRedisTemplate;
-
-    }
 
     @Override
     public Result queryTypeList() {
-        //1.从redis查询商铺类型列表
-        String shopTypeListJson = (String) StringRedisTemplate.opsForValue().get(SHOP_TYPE_KEY);
-        //2.判断是否存在
-        if (StrUtil.isNotBlank(shopTypeListJson)) {
-            //3.存在，直接返回
-            List<ShopType> shopTypeList = JSONUtil.toList(shopTypeListJson, ShopType.class);
-            return Result.ok(shopTypeList);
-        }
-        //4.不存在，从数据库查询
-        List<ShopType> shopTypeList = list();
-        //判断数据库是否存在
-        if (shopTypeList == null||shopTypeList.isEmpty()) {
-             StringRedisTemplate.opsForValue().set(SHOP_TYPE_KEY, "", RedisConstants.CACHE_NULL_TTL, TimeUnit.MINUTES);
-            return Result.fail("类型不存在");
+        //1.查询Redis中是否有首页类型缓存
+        String shopTypeList = stringRedisTemplate.opsForValue().get(SHOP_TYPE_KEY);
+        //2.如果缓存存在，直接返回缓存
+        if (StrUtil.isNotBlank(shopTypeList)) {
+            List<ShopType> typeList = JSONUtil.toList(shopTypeList, ShopType.class);
+            return Result.ok(typeList);
         }
 
-        StringRedisTemplate.opsForValue().set(SHOP_TYPE_KEY, JSONUtil.toJsonStr(shopTypeList), RedisConstants.CACHE_SHOP_TTL, TimeUnit.SECONDS);
-        return Result.ok(shopTypeList);
+        //3.如果缓存不存在，查询数据库
+        List<ShopType> typeList = this
+                .query().orderByAsc("sort").list();
+
+        //将查询结构存到Redis中
+        stringRedisTemplate.opsForValue().set(SHOP_TYPE_KEY, JSONUtil.toJsonStr(typeList));
+        //返回结果
+        return Result.ok(typeList);
     }
+
+
 }

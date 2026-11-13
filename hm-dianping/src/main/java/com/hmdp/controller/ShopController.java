@@ -70,13 +70,15 @@ public class ShopController {
      */
     @GetMapping("/of/type")
     public Result queryShopByType(
-            @RequestParam("typeId") Integer typeId,
-            @RequestParam(value = "current", defaultValue = "1") Integer current
+            @RequestParam(value = "typeId", required = false, defaultValue = "0") String typeId,
+            @RequestParam(value = "current", required = false, defaultValue = "1") String current
     ) {
+        Integer validTypeId = parseInt(typeId, 0);
+        Integer validCurrent = parseInt(current, 1);
         // 根据类型分页查询
         Page<Shop> page = shopService.query()
-                .eq("type_id", typeId)
-                .page(new Page<>(current, SystemConstants.DEFAULT_PAGE_SIZE));
+                .eq("type_id", validTypeId)
+                .page(new Page<>(validCurrent, SystemConstants.DEFAULT_PAGE_SIZE));
         // 返回数据
         return Result.ok(page.getRecords());
     }
@@ -90,13 +92,25 @@ public class ShopController {
     @GetMapping("/of/name")
     public Result queryShopByName(
             @RequestParam(value = "name", required = false) String name,
-            @RequestParam(value = "current", defaultValue = "1") Integer current
+            @RequestParam(value = "current", required = false, defaultValue = "1") String current
     ) {
+        Integer validCurrent = parseInt(current, 1);
         // 根据类型分页查询
         Page<Shop> page = shopService.query()
                 .like(StrUtil.isNotBlank(name), "name", name)
-                .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
+                .page(new Page<>(validCurrent, SystemConstants.MAX_PAGE_SIZE));
         // 返回数据
         return Result.ok(page.getRecords());
+    }
+
+    private Integer parseInt(String value, Integer defaultValue) {
+        if (value == null || value.isBlank() || "undefined".equalsIgnoreCase(value) || "null".equalsIgnoreCase(value)) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 }

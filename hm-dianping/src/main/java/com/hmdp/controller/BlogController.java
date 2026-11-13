@@ -52,23 +52,25 @@ public class BlogController {
     }
 
     @GetMapping("/of/me")
-    public Result queryMyBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
+    public Result queryMyBlog(@RequestParam(value = "current", required = false, defaultValue = "1") String current) {
+        Integer pageCurrent = parsePage(current, 1);
         // 获取登录用户
         UserDTO user = UserHolder.getUser();
         // 根据用户查询
         Page<Blog> page = blogService.query()
-                .eq("user_id", user.getId()).page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
+                .eq("user_id", user.getId()).page(new Page<>(pageCurrent, SystemConstants.MAX_PAGE_SIZE));
         // 获取当前页数据
         List<Blog> records = page.getRecords();
         return Result.ok(records);
     }
 
     @GetMapping("/hot")
-    public Result queryHotBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
+    public Result queryHotBlog(@RequestParam(value = "current", required = false, defaultValue = "1") String current) {
+        Integer pageCurrent = parsePage(current, 1);
         // 根据用户查询
         Page<Blog> page = blogService.query()
                 .orderByDesc("liked")
-                .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
+                .page(new Page<>(pageCurrent, SystemConstants.MAX_PAGE_SIZE));
         // 获取当前页数据
         List<Blog> records = page.getRecords();
         // 查询用户
@@ -79,5 +81,16 @@ public class BlogController {
             blog.setIcon(user.getIcon());
         });
         return Result.ok(records);
+    }
+
+    private Integer parsePage(String value, Integer defaultValue) {
+        if (value == null || value.isBlank() || "undefined".equalsIgnoreCase(value) || "null".equalsIgnoreCase(value)) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 }
